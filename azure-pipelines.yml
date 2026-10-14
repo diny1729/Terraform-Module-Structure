@@ -1,0 +1,299 @@
+# ==============================================================================
+# Azure DevOps CI/CD Pipeline for Multi-Environment Modular Terraform
+# ==============================================================================
+# Supports:
+# 1. Multi-Environment Stacks (dev, qa, prod)
+# 2. On-Demand Stack (ad-hoc VMs, SQL, Storage)
+# 3. Azure Blob Remote State Isolation
+# 4. Two-Phase Safe Deployments: Plan -> In-YAML Approval Gate -> Apply
+# ==============================================================================
+
+name: $(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - terraform/**
+      - azure-pipelines.yml
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - terraform/**
+
+parameters:
+  - name: targetStack
+    displayName: "Select Stack to Deploy"
+    type: string
+    default: "main-environments"
+    values:
+      - "main-environments"
+      - "on-demand"
+
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: "dev"
+    values:
+      - "dev"
+      - "qa"
+      - "prod"
+
+  - name: action
+    displayName: "Pipeline Action"
+    type: string
+    default: "plan"
+    values:
+      - "plan"
+      - "apply"
+      - "destroy"
+      - "refresh-only"
+
+  - name: onDemandWorkloadId
+    displayName: "On-Demand Workload Identifier / PR Number (e.g. pr-42, analytics-heavy, ticket-102)"
+    type: string
+    default: "sandbox"
+
+  - name: requireApprovalGate
+    displayName: "Require In-Pipeline Manual Approval Gate"
+    type: boolean
+    default: true
+
+variables:
+  # Name of the Service Connection created in Azure DevOps (Project Settings > Service Connections)
+  azureServiceConnection: "Azure-DevOps-Service-Connection"
+  
+  # Azure Storage Account details for Terraform Remote State
+  backendResourceGroup: "rg-terraform-state-mgmt"
+  backendStorageAccount: "sttfstatemgmt2026" # Replace with your storage account from setup script
+  backendContainer: "tfstate"
+  
+  # Approver notification email (comma or newline separated)
+  approverEmail: "devops-team@company.com"
+
+  # Dynamic State Key based on Stack and Workload Identifier
+  ${{ if eq(parameters.targetStack, 'main-environments') }}:
+    backendStateKey: "main-environments/${{ parameters.environment }}.terraform.tfstate"
+  ${{ if eq(parameters.targetStack, 'on-demand') }}:
+    backendStateKey: "on-demand/${{ parameters.environment }}-${{ parameters.onDemandWorkloadId }}.terraform.tfstate"
+  
+  # Working directory
+  workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/${{ parameters.targetStack }}"
+  terraformVersion: "1.9.0"
+
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+  # ----------------------------------------------------------------------------
+  # STAGE 1: VALIDATE (Syntax, Formatting, Static Analysis)
+  # ----------------------------------------------------------------------------
+  - stage: Validate
+    displayName: "Validate & Lint"
+    jobs:
+      - job: ValidateTerraform
+        displayName: "Terraform Lint & Validate"
+        steps:
+          - task: UseDotNet@2
+            displayName: "Ensure .NET runtime"
+            inputs:
+              packageType: "runtime"
+              version: "6.x"
+
+          - task: AzureCLI@2
+            displayName: "Install Terraform & Validate"
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                set -e
+                # Install Terraform
+                curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+                echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+                sudo apt-get update && sudo apt-get install -y terraform=$(terraformVersion)*
+
+                cd $(workingDirectory)
+                echo "Running Terraform Format Check..."
+                terraform fmt -check -recursive ../modules || true
+
+                echo "Initializing without backend for syntax validation..."
+                terraform init -backend=false
+                terraform validate
+                echo "Validation successful!"
+
+  # ----------------------------------------------------------------------------
+  # STAGE 2: PLAN (Generates execution plan and uploads artifact)
+  # ----------------------------------------------------------------------------
+  - stage: Plan
+    displayName: "Plan (${{ parameters.environment }})"
+    dependsOn: Validate
+    jobs:
+      - job: TerraformPlan
+        displayName: "Generate ${{ parameters.action }} plan"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Terraform Init & Plan"
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
+              inlineScript: |
+                set -e
+                # Install Terraform
+                sudo apt-get update && sudo apt-get install -y terraform=$(terraformVersion)*
+
+                cd $(workingDirectory)
+                
+                echo "=========================================================="
+                echo "Initializing Terraform with Remote State:"
+                echo "Resource Group : $(backendResourceGroup)"
+                echo "Storage Account: $(backendStorageAccount)"
+                echo "Container      : $(backendContainer)"
+                echo "State Key      : $(backendStateKey)"
+                echo "=========================================================="
+
+                # Initialize with dynamic backend config
+                terraform init \
+                  -backend-config="resource_group_name=$(backendResourceGroup)" \
+                  -backend-config="storage_account_name=$(backendStorageAccount)" \
+                  -backend-config="container_name=$(backendContainer)" \
+                  -backend-config="key=$(backendStateKey)" \
+                  -reconfigure
+
+                # Select Var File based on stack and workload catalog
+                if [ "${{ parameters.targetStack }}" == "main-environments" ]; then
+                  VAR_FILE="environments/${{ parameters.environment }}.tfvars"
+                else
+                  if [ -f "workloads/${{ parameters.onDemandWorkloadId }}.tfvars" ]; then
+                    VAR_FILE="workloads/${{ parameters.onDemandWorkloadId }}.tfvars"
+                    echo "Using cataloged workload file: $VAR_FILE"
+                  else
+                    VAR_FILE="on-demand.tfvars"
+                    echo "Using standard on-demand file: $VAR_FILE"
+                  fi
+                fi
+
+                echo "Running Terraform Plan with $VAR_FILE (Workload: ${{ parameters.onDemandWorkloadId }})..."
+                if [ "${{ parameters.action }}" == "destroy" ]; then
+                  terraform plan -destroy -var-file="$VAR_FILE" -var="workload_id=${{ parameters.onDemandWorkloadId }}" -out="$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan"
+                elif [ "${{ parameters.action }}" == "refresh-only" ]; then
+                  echo "Running Drift Detection (Refresh-Only Plan)..."
+                  terraform plan -refresh-only -var-file="$VAR_FILE" -var="workload_id=${{ parameters.onDemandWorkloadId }}" -out="$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan"
+                else
+                  terraform plan -var-file="$VAR_FILE" -var="workload_id=${{ parameters.onDemandWorkloadId }}" -out="$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan"
+                fi
+
+          - task: PublishPipelineArtifact@1
+            displayName: "Publish Plan Artifact"
+            inputs:
+              targetPath: "$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan"
+              artifact: "tfplan-${{ parameters.targetStack }}-${{ parameters.environment }}"
+
+  # ----------------------------------------------------------------------------
+  # STAGE 3: APPROVAL GATE (In-Pipeline Manual Validation Gate)
+  # ----------------------------------------------------------------------------
+  - stage: ApprovalGate
+    displayName: "Approval Gate (${{ parameters.environment }})"
+    dependsOn: Plan
+    condition: and(succeeded(), in('${{ parameters.action }}', 'apply', 'destroy', 'refresh-only'), eq('${{ parameters.requireApprovalGate }}', true))
+    jobs:
+      - job: ManualApproval
+        displayName: "Review Plan & Authorize Deployment"
+        pool: server # Agentless server job (does not consume an agent runner while waiting)
+        timeoutInMinutes: 1440 # Pauses and waits up to 24 hours for approval
+        steps:
+          - task: ManualValidation@0
+            displayName: "Manual Approval Gate"
+            timeoutInMinutes: 1440
+            inputs:
+              notifyUsers: |
+                $(approverEmail)
+              instructions: |
+                =======================================================
+                ⚠️ TERRAFORM DEPLOYMENT APPROVAL REQUIRED
+                =======================================================
+                Stack Target : ${{ parameters.targetStack }}
+                Environment  : ${{ parameters.environment }}
+                Action       : ${{ parameters.action }}
+
+                Instructions:
+                1. Review the generated plan artifact: 'tfplan-${{ parameters.targetStack }}-${{ parameters.environment }}'.
+                2. Click 'Resume' to approve and execute terraform apply.
+                3. Click 'Reject' to cancel the deployment.
+              onTimeout: "reject"
+
+  # ----------------------------------------------------------------------------
+  # STAGE 4: APPLY / DESTROY / REFRESH-ONLY (Executes after approval)
+  # ----------------------------------------------------------------------------
+  - stage: Deploy
+    displayName: "Apply (${{ parameters.environment }})"
+    dependsOn:
+      - Plan
+      - ApprovalGate
+    condition: |
+      and(
+        in('${{ parameters.action }}', 'apply', 'destroy', 'refresh-only'),
+        in(dependencies.Plan.result, 'Succeeded', 'SucceededWithIssues'),
+        or(
+          eq('${{ parameters.requireApprovalGate }}', false),
+          in(dependencies.ApprovalGate.result, 'Succeeded', 'Skipped')
+        )
+      )
+    jobs:
+      - deployment: ApplyInfrastructure
+        displayName: "Deploy to ${{ parameters.environment }}"
+        # Connects to Azure DevOps Environment for secondary audit/checks
+        environment: "${{ parameters.environment }}"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: "Download Plan Artifact"
+                  inputs:
+                    artifact: "tfplan-${{ parameters.targetStack }}-${{ parameters.environment }}"
+                    path: "$(workingDirectory)"
+
+                - task: AzureCLI@2
+                  displayName: "Terraform Apply Execution"
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      set -e
+                      # Install Terraform
+                      sudo apt-get update && sudo apt-get install -y terraform=$(terraformVersion)*
+
+                      cd $(workingDirectory)
+
+                      echo "Re-initializing Terraform Backend..."
+                      terraform init \
+                        -backend-config="resource_group_name=$(backendResourceGroup)" \
+                        -backend-config="storage_account_name=$(backendStorageAccount)" \
+                        -backend-config="container_name=$(backendContainer)" \
+                        -backend-config="key=$(backendStateKey)" \
+                        -reconfigure
+
+                      echo "Applying saved plan: ${{ parameters.environment }}.tfplan..."
+                      terraform apply -input=false "${{ parameters.environment }}.tfplan"
+
+                      echo "Exporting Outputs..."
+                      terraform output -json > $(Build.ArtifactStagingDirectory)/outputs-${{ parameters.environment }}.json || true
+
+                - task: PublishPipelineArtifact@1
+                  displayName: "Publish Terraform Outputs"
+                  inputs:
+                    targetPath: "$(Build.ArtifactStagingDirectory)/outputs-${{ parameters.environment }}.json"
+                    artifact: "outputs-${{ parameters.targetStack }}-${{ parameters.environment }}"

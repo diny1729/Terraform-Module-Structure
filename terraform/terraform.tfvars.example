@@ -1,0 +1,62 @@
+# Environment and Core Settings
+environment         = "dev"
+prefix              = "myapp"
+location            = "eastus"
+resource_group_name = "rg-myapp-dev-eastus"
+
+# Networking Configuration (BYO Network with dedicated node subnets)
+vnet_address_space = ["10.0.0.0/16"]
+subnet_cidrs = {
+  aks_system_nodes = "10.0.1.0/24"
+  aks_user_nodes   = "10.0.5.0/24"
+  vm               = "10.0.2.0/24"
+  sql              = "10.0.3.0/24"
+  appgw            = "10.0.4.0/24"
+}
+admin_ip_allowlist = "203.0.113.5/32" # Replace with your client IP or CIDR
+
+# Storage Configuration
+storage_account_tier        = "Standard"
+storage_account_replication = "LRS"
+storage_containers          = ["data", "backups", "logs", "media"]
+
+# Virtual Machine Configuration
+vm_size                            = "Standard_B2s"
+vm_enable_public_ip                = true
+vm_admin_username                  = "azureuser"
+vm_disable_password_authentication = false
+vm_admin_password                  = "P@ssw0rdSecure2026!"
+# vm_ssh_public_key                = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAA..."
+
+# Azure SQL Database Configuration
+sql_database_name   = "appdb"
+sql_admin_username  = "sqladminuser"
+sql_admin_password  = "SqlP@ssw0rdPr0d2026!"
+sql_sku_name        = "S0"
+sql_max_size_gb     = 50
+
+# Azure Kubernetes Service (AKS) Configuration
+# System Node Pool (Minimum 2 nodes, 110 max pods)
+aks_system_node_count = 2
+aks_system_min_count  = 2
+aks_system_max_count  = 5
+aks_system_vm_size    = "Standard_D2s_v5"
+
+# User Workload Node Pool (Minimum 2 nodes, 110 max pods)
+aks_user_node_count   = 2
+aks_user_min_count    = 2
+aks_user_max_count    = 6
+aks_user_vm_size      = "Standard_D4s_v5"
+
+# Azure CNI Overlay Configuration
+aks_pod_cidr        = "10.244.0.0/16"
+aks_service_cidr    = "172.16.0.0/16"
+aks_dns_service_ip  = "172.16.0.10"
+
+# Tags
+tags = {
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+  Project     = "ModernCloudInfrastructure"
+  Owner       = "DevOpsTeam"
+}

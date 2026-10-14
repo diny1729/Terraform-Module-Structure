@@ -1,0 +1,40 @@
+# ==============================================================================
+# ON-DEMAND INFRASTRUCTURE OVERRIDES (on-demand.tfvars.example)
+# ==============================================================================
+# Use this file to define transient, ad-hoc, or developer-specific on-demand
+# resources (VMs, SQL Databases, Storage Accounts) on top of the base network.
+#
+# Combine with your base environment:
+# terraform apply -var-file="environments/dev.tfvars" -var-file="environments/on-demand.tfvars"
+# ==============================================================================
+
+# Enable only the on-demand services needed for this run
+enable_vm      = true
+enable_sql     = true
+enable_storage = true
+enable_aks     = false # Skip AKS if not needed on demand to save cost
+
+# On-Demand VM Configuration
+vm_size                            = "Standard_D4s_v5" # Temporary high-compute instance
+vm_enable_public_ip                = true
+vm_admin_username                  = "ondemanduser"
+# Note: For security, pass admin passwords via $env:TF_VAR_vm_admin_password or Azure Key Vault
+
+# On-Demand Azure SQL Database Configuration
+sql_database_name = "ondemand-analytics-db"
+sql_sku_name      = "S1"
+sql_max_size_gb   = 100
+
+# On-Demand Storage Configuration
+storage_account_tier        = "Standard"
+storage_account_replication = "LRS"
+storage_containers          = ["temp-datasets", "adhoc-export", "model-checkpoints"]
+
+# Custom Tracking Tags for Cost Allocation
+tags = {
+  Environment = "dev"
+  Workload    = "OnDemand"
+  RequestedBy = "DataEngineeringTeam"
+  AutoExpire  = "2026-12-31"
+  CostCenter  = "Project-Alpha"
+}

@@ -1,0 +1,29 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude sensitive tfvars files (Store passwords and secrets locally or in Key Vault)
+*.tfvars
+!environments/*.example
+!terraform.tfvars.example
+
+# Exclude plan files (Contains unencrypted sensitive values)
+*.tfplan
+*tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# OS and Editor temp files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
