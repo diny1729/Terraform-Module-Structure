@@ -42,7 +42,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$OnDemandDir = "d:\Dinesh\Project\terraform\on-demand"
+$DefaultDir = Join-Path $PSScriptRoot "..\terraform\on-demand"
+if (Test-Path $DefaultDir) {
+    $OnDemandDir = (Resolve-Path $DefaultDir).Path
+} else {
+    $OnDemandDir = "d:\[REDACTED]\Project\terraform\on-demand"
+}
 $PlanFile = "$OnDemandDir\tfplan-$WorkloadId"
 
 Write-Host "==========================================================" -ForegroundColor Cyan

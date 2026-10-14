@@ -55,7 +55,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$TerraformDir = "d:\Dinesh\Project\terraform\main-environments"
+$DefaultDir = Join-Path $PSScriptRoot "..\terraform\main-environments"
+if (Test-Path $DefaultDir) {
+    $TerraformDir = (Resolve-Path $DefaultDir).Path
+} else {
+    $TerraformDir = "d:\[REDACTED]\Project\terraform\main-environments"
+}
 $VarFile = "$TerraformDir\environments\$Environment.tfvars"
 $PlanFile = "$TerraformDir\tfplan-$Environment"
 

@@ -59,7 +59,7 @@ flowchart TD
 ## 📂 Repository Directory Structure (Multi-Stack Isolated State)
 
 ```text
-d:\Dinesh\Project\
+d:\[REDACTED]\Project\
 ├── terraform/
 │   ├── modules/                         # Reusable Shared Resource Modules
 │   │   ├── networking/                  # VNet, Subnets (System & User Subnets), NSGs
@@ -119,37 +119,37 @@ d:\Dinesh\Project\
 
 ## 🌍 Part 1: Deploying Main Environments (Core Base Infrastructure)
 
-The **Main Environments** stack ([`terraform/main-environments/`](file:///d:/Dinesh/Project/terraform/main-environments/)) manages your foundational Azure topology: Resource Group, VNet with dedicated node subnets, AKS Cluster (System & User pools), primary SQL database, and base storage.
+The **Main Environments** stack ([`terraform/main-environments/`](file:///d:/[REDACTED]/Project/terraform/main-environments/)) manages your foundational Azure topology: Resource Group, VNet with dedicated node subnets, AKS Cluster (System & User pools), primary SQL database, and base storage.
 
 ### 1. Environment Configurations
-* [`environments/dev.tfvars`](file:///d:/Dinesh/Project/terraform/main-environments/environments/dev.tfvars): Cost-optimized (VNet: `10.10.0.0/16`, 2 AKS system nodes, 2 AKS user nodes, S0 SQL DB)
-* [`environments/qa.tfvars`](file:///d:/Dinesh/Project/terraform/main-environments/environments/qa.tfvars): Staging scale (VNet: `10.20.0.0/16`, ZRS storage, S1 SQL DB, 2-6 user nodes)
-* [`environments/prod.tfvars`](file:///d:/Dinesh/Project/terraform/main-environments/environments/prod.tfvars): High-Availability (VNet: `10.30.0.0/16`, GRS storage, GP_Gen5_2 SQL DB, 3-12 user nodes, private VM, SSH keys only)
+* [`environments/dev.tfvars`](file:///d:/[REDACTED]/Project/terraform/main-environments/environments/dev.tfvars): Cost-optimized (VNet: `10.10.0.0/16`, 2 AKS system nodes, 2 AKS user nodes, S0 SQL DB)
+* [`environments/qa.tfvars`](file:///d:/[REDACTED]/Project/terraform/main-environments/environments/qa.tfvars): Staging scale (VNet: `10.20.0.0/16`, ZRS storage, S1 SQL DB, 2-6 user nodes)
+* [`environments/prod.tfvars`](file:///d:/[REDACTED]/Project/terraform/main-environments/environments/prod.tfvars): High-Availability (VNet: `10.30.0.0/16`, GRS storage, GP_Gen5_2 SQL DB, 3-12 user nodes, private VM, SSH keys only)
 
 ### 2. Method A: Automated PowerShell Runner (Recommended)
-Use [`deploy-terraform-env.ps1`](file:///d:/Dinesh/Project/scripts/deploy-terraform-env.ps1) with automated workspace/state isolation:
+Use [`deploy-terraform-env.ps1`](file:///d:/[REDACTED]/Project/scripts/deploy-terraform-env.ps1) with automated workspace/state isolation:
 
 ```powershell
 # Plan DEV
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action plan
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action plan
 
 # Apply DEV
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action apply
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action apply
 
 # Plan QA
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment qa -Action plan
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment qa -Action plan
 
 # Apply PROD (Prompts for mandatory 'PROD' confirmation before applying)
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment prod -Action apply
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment prod -Action apply
 
 # Read Outputs for DEV
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action output
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action output
 ```
 
 ### 3. Method B: Direct Terraform CLI in `main-environments/`
 
 ```powershell
-Set-Location -Path "d:\Dinesh\Project\terraform\main-environments"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\main-environments"
 
 # Initialize with Azure Blob Remote State (or local state)
 terraform init `
@@ -168,12 +168,12 @@ terraform apply "dev.tfplan"
 
 ## 🎯 Part 2: Deploying On-Demand Workloads (Isolated State & Catalog)
 
-The **On-Demand Stack** ([`terraform/on-demand/`](file:///d:/Dinesh/Project/terraform/on-demand/)) allows developers and teams to deploy transient or ad-hoc VMs, SQL DBs, and Storage accounts that **plug into the existing VNet** without touching the core AKS cluster or base state.
+The **On-Demand Stack** ([`terraform/on-demand/`](file:///d:/[REDACTED]/Project/terraform/on-demand/)) allows developers and teams to deploy transient or ad-hoc VMs, SQL DBs, and Storage accounts that **plug into the existing VNet** without touching the core AKS cluster or base state.
 
 ### 1. Workload Catalog Templates
-Configurations are version-controlled in [`terraform/on-demand/workloads/`](file:///d:/Dinesh/Project/terraform/on-demand/workloads/) so they are 100% reproducible:
-* [`workloads/pr-template.tfvars`](file:///d:/Dinesh/Project/terraform/on-demand/workloads/pr-template.tfvars): Lightweight VM + SQL DB for Pull Request / feature testing.
-* [`workloads/analytics-heavy.tfvars`](file:///d:/Dinesh/Project/terraform/on-demand/workloads/analytics-heavy.tfvars): High-compute 8 vCPU VM + high-capacity storage for data science.
+Configurations are version-controlled in [`terraform/on-demand/workloads/`](file:///d:/[REDACTED]/Project/terraform/on-demand/workloads/) so they are 100% reproducible:
+* [`workloads/pr-template.tfvars`](file:///d:/[REDACTED]/Project/terraform/on-demand/workloads/pr-template.tfvars): Lightweight VM + SQL DB for Pull Request / feature testing.
+* [`workloads/analytics-heavy.tfvars`](file:///d:/[REDACTED]/Project/terraform/on-demand/workloads/analytics-heavy.tfvars): High-compute 8 vCPU VM + high-capacity storage for data science.
 
 ### 2. State & Governance Naming Standards
 * **Azure Blob State Key:** `on-demand/{environment}-{workloadId}.terraform.tfstate`
@@ -182,7 +182,7 @@ Configurations are version-controlled in [`terraform/on-demand/workloads/`](file
 * **Resource Governance Tags:** Automatically stamped on all on-demand resources:
   * `WorkloadId` (e.g. `pr-104`)
   * `PRNumber` (e.g. `104`)
-  * `Requester` (e.g. `dinesh`)
+  * `Requester` (e.g. `[REDACTED]`)
   * `ExpirationDate` (e.g. `2026-10-31`)
   * `ManagedBy = Terraform-OnDemand`
 
@@ -190,19 +190,19 @@ Configurations are version-controlled in [`terraform/on-demand/workloads/`](file
 
 ```powershell
 # Deploy a Pull Request test environment (PR #104)
-& "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" `
+& "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" `
     -WorkloadId "pr-104" `
     -VarFile "workloads/pr-template.tfvars" `
     -Action apply
 
 # Deploy a Heavy Analytics workload
-& "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" `
+& "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" `
     -WorkloadId "analytics-heavy" `
     -VarFile "workloads/analytics-heavy.tfvars" `
     -Action apply
 
 # Clean up / Teardown ONLY PR #104 (Leaves VNet, AKS, and other workloads 100% intact!)
-& "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" `
+& "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" `
     -WorkloadId "pr-104" `
     -Action destroy
 ```
@@ -210,7 +210,7 @@ Configurations are version-controlled in [`terraform/on-demand/workloads/`](file
 ### 4. Method B: Direct Terraform CLI in `on-demand/`
 
 ```powershell
-Set-Location -Path "d:\Dinesh\Project\terraform\on-demand"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\on-demand"
 
 # Initialize with isolated workload state key
 terraform init `
@@ -236,7 +236,7 @@ If you already deployed a VM under `pr-104` and need to resize it (e.g., from `S
    * **In Pipeline:** Set parameter `onDemandWorkloadId: pr-104` and `action: apply`.
    * **In PowerShell:**
      ```powershell
-     & "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -Action apply
+     & "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -Action apply
      ```
    * *Result:* Terraform re-opens `on-demand/dev-pr-104.terraform.tfstate`, detects the existing VM in Azure, and performs an in-place resize without recreating the resource.
 
@@ -286,7 +286,7 @@ You can run the automated script or execute the commands step-by-step.
 
 ### Option A: Run the Script
 ```powershell
-& "d:\Dinesh\Project\scripts\deploy-app-gateway.ps1" `
+& "d:\[REDACTED]\Project\scripts\deploy-app-gateway.ps1" `
     -ResourceGroup "rg-myapp-dev-eastus" `
     -Location "eastus" `
     -VNetName "myapp-vnet-dev" `
@@ -380,7 +380,7 @@ Azure Front Door standard/premium provides global L7 routing, edge caching, and 
 
 ### Option A: Run the Script
 ```powershell
-& "d:\Dinesh\Project\scripts\deploy-azure-front-door.ps1" `
+& "d:\[REDACTED]\Project\scripts\deploy-azure-front-door.ps1" `
     -ResourceGroup "rg-myapp-dev-eastus" `
     -ProfileName "myapp-afd-dev" `
     -Sku "Standard_AzureFrontDoor" `
@@ -470,13 +470,13 @@ az afd endpoint show `
 
 ## 🚀 Part 5: Azure DevOps CI/CD Pipeline Deployment
 
-The repository includes a production-grade Azure DevOps pipeline at [`azure-pipelines.yml`](file:///d:/Dinesh/Project/azure-pipelines.yml).
+The repository includes a production-grade Azure DevOps pipeline at [`azure-pipelines.yml`](file:///d:/[REDACTED]/Project/azure-pipelines.yml).
 
 ### 1. Step 1: Provision the Azure Storage Account for `tfstate`
 Run the included PowerShell script to create your dedicated state storage with Blob Versioning and Soft Delete:
 
 ```powershell
-& "d:\Dinesh\Project\scripts\setup-tfstate-storage.ps1" `
+& "d:\[REDACTED]\Project\scripts\setup-tfstate-storage.ps1" `
     -ResourceGroupName "rg-terraform-state-mgmt" `
     -Location "eastus" `
     -ContainerName "tfstate"
@@ -563,20 +563,20 @@ flowchart TD
 #### A. Main Environments (Dev / QA / Prod)
 ```powershell
 # Method 1: Using automated runner
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action plan
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action plan
 
 # Method 2: Direct Terraform CLI in main-environments/
-Set-Location -Path "d:\Dinesh\Project\terraform\main-environments"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\main-environments"
 terraform plan -refresh-only -var-file="environments/dev.tfvars"
 ```
 
 #### B. On-Demand Workloads (e.g. PR-104 / Analytics)
 ```powershell
 # Method 1: Using automated runner
-& "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -VarFile "workloads/pr-template.tfvars" -Action plan
+& "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -VarFile "workloads/pr-template.tfvars" -Action plan
 
 # Method 2: Direct Terraform CLI in on-demand/
-Set-Location -Path "d:\Dinesh\Project\terraform\on-demand"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\on-demand"
 terraform plan -refresh-only -var-file="workloads/pr-template.tfvars" -var="workload_id=pr-104"
 ```
 
@@ -608,20 +608,20 @@ flowchart LR
 #### A. Main Environments
 ```powershell
 # Automated Runner
-& "d:\Dinesh\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action refresh-only
+& "d:\[REDACTED]\Project\scripts\deploy-terraform-env.ps1" -Environment dev -Action refresh-only
 
 # Direct CLI
-Set-Location -Path "d:\Dinesh\Project\terraform\main-environments"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\main-environments"
 terraform apply -refresh-only -var-file="environments/dev.tfvars" -auto-approve
 ```
 
 #### B. On-Demand Workloads
 ```powershell
 # Automated Runner
-& "d:\Dinesh\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -VarFile "workloads/pr-template.tfvars" -Action refresh-only
+& "d:\[REDACTED]\Project\scripts\deploy-on-demand.ps1" -WorkloadId "pr-104" -VarFile "workloads/pr-template.tfvars" -Action refresh-only
 
 # Direct CLI
-Set-Location -Path "d:\Dinesh\Project\terraform\on-demand"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\on-demand"
 terraform apply -refresh-only -var-file="workloads/pr-template.tfvars" -var="workload_id=pr-104" -auto-approve
 ```
 
@@ -653,11 +653,11 @@ terraform apply -refresh-only `
 #### 4-Step Reconcile Lifecycle:
 1. **Refresh State**: Run `apply -refresh-only` (as shown in Scenario 2).
 2. **Update Git Code (`.tfvars`)**:
-   - For Main Environments: Open [`terraform/main-environments/environments/dev.tfvars`](file:///d:/Dinesh/Project/terraform/main-environments/environments/dev.tfvars) and update:
+   - For Main Environments: Open [`terraform/main-environments/environments/dev.tfvars`](file:///d:/[REDACTED]/Project/terraform/main-environments/environments/dev.tfvars) and update:
      ```hcl
      vm_size = "Standard_D4s_v5"
      ```
-   - For On-Demand Workloads: Open [`terraform/on-demand/workloads/pr-template.tfvars`](file:///d:/Dinesh/Project/terraform/on-demand/workloads/pr-template.tfvars) and update:
+   - For On-Demand Workloads: Open [`terraform/on-demand/workloads/pr-template.tfvars`](file:///d:/[REDACTED]/Project/terraform/on-demand/workloads/pr-template.tfvars) and update:
      ```hcl
      vm_size = "Standard_D4s_v5"
      ```
@@ -686,12 +686,12 @@ Do **NOT** run `-refresh-only`. Run standard `plan` and `apply`:
 
 ```powershell
 # Main Environments:
-Set-Location -Path "d:\Dinesh\Project\terraform\main-environments"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\main-environments"
 terraform plan -var-file="environments/dev.tfvars" -out="revert.tfplan"
 terraform apply "revert.tfplan"
 
 # On-Demand:
-Set-Location -Path "d:\Dinesh\Project\terraform\on-demand"
+Set-Location -Path "d:\[REDACTED]\Project\terraform\on-demand"
 terraform plan -var-file="workloads/pr-template.tfvars" -var="workload_id=pr-104" -out="revert.tfplan"
 terraform apply "revert.tfplan"
 ```
@@ -781,7 +781,7 @@ Once unlocked, immediately run `apply -refresh-only` to ensure the state reflect
 #### Step-by-Step Fix:
 
 1. **Write the resource code** in your `.tfvars` or `.tf` file:
-   In [`terraform/on-demand/workloads/pr-template.tfvars`](file:///d:/Dinesh/Project/terraform/on-demand/workloads/pr-template.tfvars):
+   In [`terraform/on-demand/workloads/pr-template.tfvars`](file:///d:/[REDACTED]/Project/terraform/on-demand/workloads/pr-template.tfvars):
    ```hcl
    enable_sql = true
    sql_db_name = "sqldb-emergency-fix"
@@ -826,7 +826,7 @@ Once unlocked, immediately run `apply -refresh-only` to ensure the state reflect
 `~ tags = { - "PolicyAssignmentId" = "..." }` and attempts to delete them. Next time Azure Policy runs, it adds them back. This creates an **infinite drift cycle (permadiff)**.
 
 #### Fix: Permanent Lifecycle Ignore in Terraform Modules
-In your module definitions (e.g. [`terraform/modules/compute_vm/main.tf`](file:///d:/Dinesh/Project/terraform/modules/compute_vm/main.tf) or [`terraform/modules/storage/main.tf`](file:///d:/Dinesh/Project/terraform/modules/storage/main.tf)):
+In your module definitions (e.g. [`terraform/modules/compute_vm/main.tf`](file:///d:/[REDACTED]/Project/terraform/modules/compute_vm/main.tf) or [`terraform/modules/storage/main.tf`](file:///d:/[REDACTED]/Project/terraform/modules/storage/main.tf)):
 
 ```hcl
 resource "azurerm_linux_virtual_machine" "vm" {
@@ -872,12 +872,12 @@ Running a standard `terraform apply` will try to **downgrade AKS back to `1.29.2
 
 2. **Sync State with Live Version (Zero Downtime)**:
    ```powershell
-   Set-Location -Path "d:\Dinesh\Project\terraform\main-environments"
+   Set-Location -Path "d:\[REDACTED]\Project\terraform\main-environments"
    terraform apply -refresh-only -var-file="environments/dev.tfvars" -auto-approve
    ```
 
 3. **Update Code in `dev.tfvars`**:
-   Open [`terraform/main-environments/environments/dev.tfvars`](file:///d:/Dinesh/Project/terraform/main-environments/environments/dev.tfvars):
+   Open [`terraform/main-environments/environments/dev.tfvars`](file:///d:/[REDACTED]/Project/terraform/main-environments/environments/dev.tfvars):
    ```hcl
    aks_kubernetes_version = "1.29.4"
    ```
@@ -893,13 +893,13 @@ Running a standard `terraform apply` will try to **downgrade AKS back to `1.29.2
 ### 10. Scenario 10: Base VNet / Subnet Reconfiguration Impacting On-Demand Workloads
 
 **Problem:** The core platform team updated the VNet or recreated subnets in `main-environments`.
-The on-demand stack ([`terraform/on-demand/main.tf`](file:///d:/Dinesh/Project/terraform/on-demand/main.tf)) uses `data "azurerm_subnet"` to discover the existing VNet subnets. Because `tfstate` still has the old cached subnet ARM resource ID, deploying an on-demand VM throws an error: `SubnetNotFound` or attempts an unintended NIC recreation.
+The on-demand stack ([`terraform/on-demand/main.tf`](file:///d:/[REDACTED]/Project/terraform/on-demand/main.tf)) uses `data "azurerm_subnet"` to discover the existing VNet subnets. Because `tfstate` still has the old cached subnet ARM resource ID, deploying an on-demand VM throws an error: `SubnetNotFound` or attempts an unintended NIC recreation.
 
 #### Step-by-Step Fix:
 
 1. **Re-evaluate Data Sources Without Touching On-Demand Resources**:
    ```powershell
-   Set-Location -Path "d:\Dinesh\Project\terraform\on-demand"
+   Set-Location -Path "d:\[REDACTED]\Project\terraform\on-demand"
    terraform apply -refresh-only `
        -var-file="workloads/pr-template.tfvars" `
        -var="workload_id=pr-104" `
